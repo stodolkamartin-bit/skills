@@ -115,6 +115,33 @@
   }, 600);
   window.__app.zeige = zeige;
 
+  const DOWNLOAD_FEHLER = 'Download nicht möglich – mach einfach einen Screenshot 😉';
+
+  function ladeHerunter() {
+    if (!ctx || !zustand.ausrede) return;
+    const name = (zustand.modus === 'kunst' ? 'kunstwerk-' : 'beweis-') + zustand.ausrede.seed + '.png';
+    // Das PNG zeigt den REC-Punkt immer eingeschaltet.
+    if (zustand.modus === 'polaroid' && window.Polaroid) {
+      recAn = true;
+      window.Polaroid.zeichnePolaroid(ctx, zustand.ausrede, { recAn: true });
+    }
+    try {
+      canvas.toBlob((blob) => {
+        if (!blob) { meldung.textContent = DOWNLOAD_FEHLER; return; }
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        link.download = name;
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        setTimeout(() => URL.revokeObjectURL(link.href), 1000);
+      }, 'image/png');
+    } catch (e) {
+      meldung.textContent = DOWNLOAD_FEHLER;
+    }
+  }
+  $('#download').addEventListener('click', ladeHerunter);
+
   function generiere() {
     zeige(A.erzeugeAusrede(A.neuerSeed(), aktuellerAnlass()));
   }

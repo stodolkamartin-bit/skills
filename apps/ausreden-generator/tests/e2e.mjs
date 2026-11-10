@@ -145,6 +145,41 @@ try {
     pruefe((await bild()) === a, 'Standbild bei prefers-reduced-motion');
     await context.close();
   }
+
+  // ---------- Task 5: Download ----------
+  {
+    console.log('Download');
+    const { context, page, probleme } = await neueSeite(browser, { acceptDownloads: true });
+    await page.click('#generieren');
+    const pngOk = async (dl) => {
+      const datei = await dl.path();
+      const kopf = fs.readFileSync(datei).subarray(0, 4).toString('hex');
+      return kopf === '89504e47';
+    };
+    let [dl] = await Promise.all([page.waitForEvent('download'), page.click('#download')]);
+    pruefe(/^beweis-\d{4}\.png$/.test(dl.suggestedFilename()), 'Dateiname ' + dl.suggestedFilename());
+    pruefe(await pngOk(dl), 'gültiges PNG (Polaroid)');
+    await page.click('#modus');
+    [dl] = await Promise.all([page.waitForEvent('download'), page.click('#download')]);
+    pruefe(/^kunstwerk-\d{4}\.png$/.test(dl.suggestedFilename()), 'Dateiname ' + dl.suggestedFilename());
+    pruefe(await pngOk(dl), 'gültiges PNG (Kunstwerk)');
+    pruefe(probleme.length === 0, 'keine Konsolenfehler' + (probleme.length ? ': ' + probleme.join(' | ') : ''));
+    await context.close();
+  }
+  {
+    console.log('Download kaputt');
+    const context = await browser.newContext();
+    await context.addInitScript(() => {
+      HTMLCanvasElement.prototype.toBlob = function (cb) { setTimeout(() => cb(null), 0); };
+    });
+    const page = await context.newPage();
+    await page.goto(url);
+    await page.click('#generieren');
+    await page.click('#download');
+    await page.waitForTimeout(200);
+    pruefe((await page.textContent('#meldung')) === 'Download nicht möglich – mach einfach einen Screenshot 😉', 'Fehlermeldung bei toBlob → null');
+    await context.close();
+  }
 } finally {
   await browser.close();
 }
