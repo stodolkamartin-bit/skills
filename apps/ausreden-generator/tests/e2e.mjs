@@ -217,6 +217,30 @@ try {
     await context.close();
   }
 
+  {
+    console.log('Speichern über claude.ai (downloads-Capability)');
+    const context = await browser.newContext();
+    await context.addInitScript(() => {
+      window.__saves = [];
+      window.claude = {
+        use: (name) => Promise.resolve(name === 'downloads'
+          ? { save: (req) => { window.__saves.push({ filename: req.filename, blob: req.data instanceof Blob, size: req.data.size }); return Promise.resolve({ status: 'saved' }); } }
+          : null),
+      };
+    });
+    const page = await context.newPage();
+    await page.goto(url);
+    await page.click('#generieren');
+    await page.waitForTimeout(100);
+    await page.click('#download');
+    await page.waitForFunction(() => window.__saves.length > 0, null, { timeout: 3000 }).catch(() => {});
+    const saves = await page.evaluate(() => window.__saves);
+    pruefe(saves.length === 1 && /^beweis-\d{4}\.png$/.test(saves[0].filename) && saves[0].blob && saves[0].size > 1000,
+      'Download läuft über claude.use("downloads").save ' + JSON.stringify(saves));
+    pruefe(await page.locator('#speichern').isHidden(), 'keine Ersatz-Ansicht, wenn das Speichern klappt');
+    await context.close();
+  }
+
   // ---------- Task 6: keine Fremd-Requests, Layout, Screenshots ----------
   {
     console.log('Requests');

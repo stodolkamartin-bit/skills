@@ -118,6 +118,12 @@
   }, 600);
   window.__app.zeige = zeige;
 
+  // claude.ai-Seiten dürfen nicht direkt herunterladen; dort gibt es einen eigenen Speicher-Dienst.
+  let speicherDienst = null;
+  if (window.claude && typeof window.claude.use === 'function') {
+    window.claude.use('downloads').then((d) => { speicherDienst = d; }, () => {});
+  }
+
   const DOWNLOAD_FEHLER = 'Download nicht möglich – mach einfach einen Screenshot 😉';
 
   function ladeHerunter() {
@@ -131,6 +137,14 @@
     try {
       canvas.toBlob((blob) => {
         if (!blob) { meldung.textContent = DOWNLOAD_FEHLER; return; }
+        if (speicherDienst) {
+          // Auf claude.ai: Der Viewer bestätigt das Speichern selbst.
+          speicherDienst.save({ filename: name, data: blob }).then(
+            () => { meldung.textContent = 'Gespeichert: ' + name; },
+            (e) => { if (!e || e.code !== 'declined') zeigeSpeichern(); }
+          );
+          return;
+        }
         zeigeSpeichern();
         const link = document.createElement('a');
         link.href = URL.createObjectURL(blob);
