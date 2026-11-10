@@ -181,6 +181,42 @@ try {
     await context.close();
   }
 
+  // ---------- Final-Review-Fixes ----------
+  {
+    console.log('Screenreader');
+    const { context, page } = await neueSeite(browser);
+    await page.evaluate(() => {
+      window.__liveAenderungen = 0;
+      const live = document.querySelector('[aria-live]');
+      new MutationObserver(() => window.__liveAenderungen++).observe(live, { childList: true, characterData: true, subtree: true });
+    });
+    await page.click('#generieren');
+    await page.waitForTimeout(1500);
+    const sr = await page.evaluate(() => ({
+      aenderungen: window.__liveAenderungen,
+      voll: document.querySelector('[aria-live]').textContent === window.__app.zustand.ausrede.text,
+      versteckt: document.querySelector('#ausrede-text').getAttribute('aria-hidden'),
+    }));
+    pruefe(sr.aenderungen <= 2, `Live-Region ändert sich höchstens 2× pro Ausrede (${sr.aenderungen})`);
+    pruefe(sr.voll, 'Live-Region enthält den ganzen Satz');
+    pruefe(sr.versteckt === 'true', 'animierter Text ist für Screenreader versteckt');
+    await context.close();
+  }
+  {
+    console.log('Speichern ohne Download (geteilter Link)');
+    const { context, page, probleme } = await neueSeite(browser, { acceptDownloads: true });
+    await page.click('#generieren');
+    await page.click('#download');
+    await page.waitForSelector('#speichern-bild', { state: 'visible', timeout: 3000 }).catch(() => {});
+    const src = await page.getAttribute('#speichern-bild', 'src').catch(() => null);
+    pruefe(!!src && src.startsWith('data:image/png'), 'Bild zum Speichern wird angezeigt');
+    pruefe(await page.locator('#speichern-hinweis').isVisible().catch(() => false), 'Hinweis „lange drücken / Rechtsklick“ sichtbar');
+    await page.click('#speichern-schliessen').catch(() => {});
+    pruefe(await page.locator('#speichern').isHidden().catch(() => false), 'Speichern-Ansicht lässt sich schließen');
+    pruefe(probleme.length === 0, 'keine Konsolenfehler' + (probleme.length ? ': ' + probleme.join(' | ') : ''));
+    await context.close();
+  }
+
   // ---------- Task 6: keine Fremd-Requests, Layout, Screenshots ----------
   {
     console.log('Requests');

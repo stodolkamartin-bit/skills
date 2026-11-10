@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Ausreden-Generator</title>
+<meta name="claude:viewport-fit-sides" content="cover">
 <meta name="description" content="Erfindet absurde Ausreden fürs Zuspätkommen – mit Beweisfoto.">
 <style>
   :root {
@@ -32,12 +33,14 @@
       --chip-on-text: #1b1917;
       --border: #423c35;
       --shadow: 0 10px 30px rgba(0, 0, 0, .4);
+      color-scheme: dark;
     }
   }
   :root[data-theme="dark"] {
     --bg: #1b1917; --surface: #26231f; --text: #f1ebe2; --muted: #b3a89b;
     --accent: #ff7a50; --accent-text: #1b1917; --chip: #34302b; --chip-on: #f1ebe2;
     --chip-on-text: #1b1917; --border: #423c35; --shadow: 0 10px 30px rgba(0, 0, 0, .4);
+    color-scheme: dark;
   }
   * { box-sizing: border-box; }
   html { -webkit-text-size-adjust: 100%; }
@@ -50,7 +53,9 @@
   main {
     max-width: 560px;
     margin: 0 auto;
-    padding: 28px 16px 48px;
+    padding-block: 28px 48px;
+    padding-left: max(16px, env(safe-area-inset-left, 0px));
+    padding-right: max(16px, env(safe-area-inset-right, 0px));
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -138,6 +143,29 @@
     padding: 10px 16px;
     cursor: pointer;
   }
+  .sr-only {
+    position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+    overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0;
+  }
+  #speichern {
+    width: 100%;
+    max-width: 480px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    padding: 14px;
+    border: 1px dashed var(--border);
+    border-radius: 14px;
+    background: var(--surface);
+  }
+  #speichern[hidden] { display: none; }
+  #speichern-hinweis { margin: 0; text-align: center; color: var(--muted); }
+  #speichern-bild { width: 100%; max-width: 100%; height: auto; border-radius: 10px; }
+  #speichern-schliessen {
+    border: 1px solid var(--border); background: var(--chip); color: var(--text);
+    border-radius: 12px; padding: 8px 16px; cursor: pointer;
+  }
   #meldung { margin: 0; color: var(--muted); text-align: center; min-height: 1.5em; }
   :focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
   @media (prefers-reduced-motion: reduce) {
@@ -159,7 +187,8 @@
 
   <button id="generieren" type="button">Ausrede generieren!</button>
 
-  <p id="ausrede-text" aria-live="polite"></p>
+  <p id="ausrede-text" aria-hidden="true"></p>
+  <p id="ausrede-sr" class="sr-only" aria-live="polite"></p>
   <canvas id="beweis" width="800" height="960" hidden aria-label="Beweisfoto"></canvas>
 
   <div id="aktionen" hidden>
@@ -168,6 +197,11 @@
     <button id="download" type="button">⬇️ Beweis herunterladen</button>
   </div>
   <p id="meldung" role="status"></p>
+  <div id="speichern" hidden>
+    <p id="speichern-hinweis">Kein Download gestartet? Bild lange drücken (Handy) oder Rechtsklick → „Bild speichern“.</p>
+    <img id="speichern-bild" alt="Beweisbild zum Speichern">
+    <button id="speichern-schliessen" type="button">Schließen</button>
+  </div>
 </main>
 <script src="ausreden.js"></script>
 <script src="polaroid.js"></script>

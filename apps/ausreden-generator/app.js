@@ -36,8 +36,10 @@
   }
 
   let tippTimer = null;
+  const srEl = $('#ausrede-sr');
   function tippe(text) {
     clearInterval(tippTimer);
+    srEl.textContent = text; // Screenreader bekommen den ganzen Satz auf einmal
     if (ruhig()) { textEl.textContent = text; return; }
     let i = 0;
     textEl.textContent = '';
@@ -51,6 +53,7 @@
   function zeige(ausrede) {
     zustand.ausrede = ausrede;
     meldung.textContent = '';
+    document.querySelector('#speichern').hidden = true;
     tippe(ausrede.text);
     aktionen.hidden = false;
     if (zeichneAktuell()) {
@@ -128,6 +131,7 @@
     try {
       canvas.toBlob((blob) => {
         if (!blob) { meldung.textContent = DOWNLOAD_FEHLER; return; }
+        zeigeSpeichern();
         const link = document.createElement('a');
         link.href = URL.createObjectURL(blob);
         link.download = name;
@@ -141,6 +145,15 @@
     }
   }
   $('#download').addEventListener('click', ladeHerunter);
+
+  // Wo Downloads blockiert sind (z. B. eingebettete Seiten), kann man das Bild direkt speichern.
+  const speichern = $('#speichern');
+  const speichernBild = $('#speichern-bild');
+  function zeigeSpeichern() {
+    speichernBild.src = canvas.toDataURL('image/png');
+    speichern.hidden = false;
+  }
+  $('#speichern-schliessen').addEventListener('click', () => { speichern.hidden = true; });
 
   function generiere() {
     zeige(A.erzeugeAusrede(A.neuerSeed(), aktuellerAnlass()));
