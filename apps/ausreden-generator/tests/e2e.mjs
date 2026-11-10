@@ -180,6 +180,35 @@ try {
     pruefe((await page.textContent('#meldung')) === 'Download nicht möglich – mach einfach einen Screenshot 😉', 'Fehlermeldung bei toBlob → null');
     await context.close();
   }
+
+  // ---------- Task 6: keine Fremd-Requests, Layout, Screenshots ----------
+  {
+    console.log('Requests');
+    const context = await browser.newContext();
+    const page = await context.newPage();
+    const fremd = [];
+    page.on('request', (r) => { if (r.url() !== url && !r.url().startsWith('blob:') && !r.url().startsWith('data:')) fremd.push(r.url()); });
+    await page.goto(url);
+    await page.click('#generieren');
+    await page.waitForTimeout(300);
+    const erwartet = process.argv[2] ? 0 : 4; // index.html lädt seine 4 Skripte
+    pruefe(fremd.length === erwartet, `Requests außer der Seite: ${fremd.length} (erwartet ${erwartet})`);
+    await context.close();
+  }
+  const name = process.argv[2] ? 'dist-' : '';
+  for (const [breite, hoehe, datei] of [[1280, 900, 'desktop'], [360, 800, 'schmal'], [390, 844, 'handy']]) {
+    for (const schema of ['light', 'dark']) {
+      const context = await browser.newContext({ viewport: { width: breite, height: hoehe }, colorScheme: schema, deviceScaleFactor: 1 });
+      const page = await context.newPage();
+      await page.goto(url);
+      await page.click('#generieren');
+      await page.waitForTimeout(1500);
+      const ueber = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
+      pruefe(ueber <= 0, `${breite}px ${schema}: kein horizontales Scrollen (${ueber})`);
+      if (datei !== 'schmal') await page.screenshot({ path: path.join(outDir, `${name}${datei}-${schema}.png`), fullPage: true });
+      await context.close();
+    }
+  }
 } finally {
   await browser.close();
 }
