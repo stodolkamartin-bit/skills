@@ -65,6 +65,44 @@ try {
     pruefe(probleme.length === 0, 'keine Konsolenfehler / Dialoge' + (probleme.length ? ': ' + probleme.join(' | ') : ''));
     await context.close();
   }
+
+  // ---------- Task 3: Polaroid ----------
+  {
+    console.log('Polaroid');
+    const { context, page, probleme } = await neueSeite(browser, { viewport: { width: 600, height: 1100 } });
+    await page.click('#generieren');
+    pruefe(await page.locator('#beweis').isVisible(), 'Canvas sichtbar');
+    // Emojis müssen sichtbar gezeichnet werden: Vergleich mit derselben Ausrede ohne Emojis.
+    const anteil = await page.evaluate(() => {
+      const a = window.__app.zustand.ausrede;
+      const bild = (aus) => {
+        const c = document.createElement('canvas'); c.width = 800; c.height = 960;
+        Polaroid.zeichnePolaroid(c.getContext('2d'), aus, { recAn: true });
+        return c.getContext('2d').getImageData(0, 0, 800, 960).data;
+      };
+      const mit = bild(a), ohne = bild({ ...a, emojis: ['', '', '', ''] });
+      let diff = 0;
+      for (let i = 0; i < mit.length; i += 4) {
+        if (Math.abs(mit[i] - ohne[i]) + Math.abs(mit[i + 1] - ohne[i + 1]) + Math.abs(mit[i + 2] - ohne[i + 2]) > 60) diff++;
+      }
+      return diff / (800 * 960);
+    });
+    pruefe(anteil > 0.04, `Emojis sichtbar (${(anteil * 100).toFixed(1)} % der Pixel)`);
+    const gleich = await page.evaluate(() => {
+      const a = Ausreden.erzeugeAusrede(4711, 'arbeit');
+      const bild = () => {
+        const c = document.createElement('canvas'); c.width = 800; c.height = 960;
+        Polaroid.zeichnePolaroid(c.getContext('2d'), a, { recAn: true });
+        return c.toDataURL();
+      };
+      return bild() === bild();
+    });
+    pruefe(gleich, 'gleicher Seed → gleiches Polaroid');
+    await page.waitForTimeout(700);
+    await page.locator('#beweis').screenshot({ path: path.join(outDir, 'polaroid.png') });
+    pruefe(probleme.length === 0, 'keine Konsolenfehler' + (probleme.length ? ': ' + probleme.join(' | ') : ''));
+    await context.close();
+  }
 } finally {
   await browser.close();
 }

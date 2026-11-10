@@ -6,7 +6,7 @@
   const ruhig = () => window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
   const zustand = { ausrede: null, modus: 'polaroid', anlass: 'arbeit' };
-  window.__app = { zustand };
+  window.__app = { zustand, pauseRec: false };
 
   const chips = $('#anlass-chips');
   const frei = $('#anlass-frei');
@@ -61,10 +61,25 @@
     }
   }
 
+  const ctx = canvas.getContext ? canvas.getContext('2d') : null;
+  let recAn = true;
+
   /** Zeichnet den aktuellen Modus; false, wenn es nichts zu zeichnen gibt. */
   function zeichneAktuell() {
+    if (!ctx || !zustand.ausrede) return false;
+    if (zustand.modus === 'polaroid' && window.Polaroid) {
+      window.Polaroid.zeichnePolaroid(ctx, zustand.ausrede, { recAn });
+      return true;
+    }
     return false;
   }
+
+  // „● REC“ blinkt, solange das Polaroid zu sehen ist
+  setInterval(() => {
+    if (zustand.modus !== 'polaroid' || !zustand.ausrede || window.__app.pauseRec || ruhig()) return;
+    recAn = !recAn;
+    zeichneAktuell();
+  }, 600);
   window.__app.zeige = zeige;
 
   function generiere() {
