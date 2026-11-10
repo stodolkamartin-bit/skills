@@ -5,7 +5,7 @@
   const $ = (sel) => document.querySelector(sel);
   const ruhig = () => window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-  const zustand = { ausrede: null, modus: 'polaroid', anlass: 'arbeit' };
+  const zustand = { ausrede: null, modus: 'polaroid', anlass: 'arbeit', rafId: null };
   window.__app = { zustand, pauseRec: false };
 
   const chips = $('#anlass-chips');
@@ -67,12 +67,45 @@
   /** Zeichnet den aktuellen Modus; false, wenn es nichts zu zeichnen gibt. */
   function zeichneAktuell() {
     if (!ctx || !zustand.ausrede) return false;
-    if (zustand.modus === 'polaroid' && window.Polaroid) {
+    stoppeKunst();
+    if (zustand.modus === 'kunst' && window.Kunst) {
+      starteKunst();
+      return true;
+    }
+    if (window.Polaroid) {
       window.Polaroid.zeichnePolaroid(ctx, zustand.ausrede, { recAn });
       return true;
     }
     return false;
   }
+
+  function starteKunst() {
+    const szene = window.Kunst.erzeugeSzene(zustand.ausrede);
+    if (ruhig()) {
+      for (let i = 0; i < 200; i++) window.Kunst.zeichneKunst(ctx, szene, i * 16);
+      return;
+    }
+    const start = performance.now();
+    const frame = (jetzt) => {
+      if (zustand.modus !== 'kunst') { zustand.rafId = null; return; }
+      window.Kunst.zeichneKunst(ctx, szene, jetzt - start);
+      zustand.rafId = requestAnimationFrame(frame);
+    };
+    window.Kunst.zeichneKunst(ctx, szene, 0);
+    zustand.rafId = requestAnimationFrame(frame);
+  }
+
+  function stoppeKunst() {
+    if (zustand.rafId != null) cancelAnimationFrame(zustand.rafId);
+    zustand.rafId = null;
+  }
+
+  const modusBtn = $('#modus');
+  modusBtn.addEventListener('click', () => {
+    zustand.modus = zustand.modus === 'kunst' ? 'polaroid' : 'kunst';
+    modusBtn.textContent = zustand.modus === 'kunst' ? '📸 Zurück zum Beweis' : '🎨 Als Kunstwerk';
+    zeichneAktuell();
+  });
 
   // „● REC“ blinkt, solange das Polaroid zu sehen ist
   setInterval(() => {

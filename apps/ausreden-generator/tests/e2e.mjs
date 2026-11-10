@@ -103,6 +103,48 @@ try {
     pruefe(probleme.length === 0, 'keine Konsolenfehler' + (probleme.length ? ': ' + probleme.join(' | ') : ''));
     await context.close();
   }
+
+  // ---------- Task 4: Kunstwerk + Moduswechsel ----------
+  {
+    console.log('Kunstwerk');
+    const { context, page, probleme } = await neueSeite(browser, { viewport: { width: 600, height: 1100 } });
+    const bild = () => page.evaluate(() => document.querySelector('#beweis').toDataURL());
+    await page.click('#generieren');
+    await page.click('#modus');
+    pruefe((await page.textContent('#modus')).includes('Zurück zum Beweis'), 'Button heißt „Zurück zum Beweis“');
+    pruefe((await page.evaluate(() => window.__app.zustand.modus)) === 'kunst', 'Modus = kunst');
+    const a = await bild();
+    await page.waitForTimeout(300);
+    pruefe((await bild()) !== a, 'Kunstwerk animiert');
+    await page.waitForTimeout(1200);
+    await page.locator('#beweis').screenshot({ path: path.join(outDir, 'kunst.png') });
+
+    await page.click('#noch-eine');
+    pruefe((await page.evaluate(() => window.__app.zustand.modus)) === 'kunst', '„Noch eine“ bleibt im Kunst-Modus');
+
+    // hektisches Klicken
+    await page.evaluate(() => { window.__app.pauseRec = true; });
+    await page.click('#modus'); await page.click('#noch-eine'); await page.click('#modus'); await page.click('#modus');
+    // jetzt: kunst → polaroid → (noch eine) → kunst → polaroid
+    const z = await page.evaluate(() => ({ modus: window.__app.zustand.modus, raf: window.__app.zustand.rafId }));
+    pruefe(z.modus === 'polaroid' && z.raf == null, `nach Klick-Chaos: Polaroid, keine Animation (${JSON.stringify(z)})`);
+    const p1 = await bild();
+    await page.waitForTimeout(300);
+    pruefe((await bild()) === p1, 'Polaroid bleibt stehen (kein alter Kunst-Frame)');
+    pruefe(probleme.length === 0, 'keine Konsolenfehler' + (probleme.length ? ': ' + probleme.join(' | ') : ''));
+    await context.close();
+  }
+  {
+    console.log('Kunstwerk, reduzierte Bewegung');
+    const { context, page } = await neueSeite(browser, { reducedMotion: 'reduce' });
+    await page.click('#generieren');
+    await page.click('#modus');
+    const bild = () => page.evaluate(() => document.querySelector('#beweis').toDataURL());
+    const a = await bild();
+    await page.waitForTimeout(300);
+    pruefe((await bild()) === a, 'Standbild bei prefers-reduced-motion');
+    await context.close();
+  }
 } finally {
   await browser.close();
 }
